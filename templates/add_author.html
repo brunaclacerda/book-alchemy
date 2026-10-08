@@ -7,26 +7,70 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
 </head>
 <body>
+  {% set form_endpoint = form_action|default(route_name|default(request.endpoint, true), true) %}
+  {% set is_edit = author is defined and author %}
   <main class="card">
-    <h1>Add a New Author</h1>
-    <form method="post">
+    <h1>{{ 'Edit Author' if is_edit else 'Add a New Author' }}</h1>
+    <p id="form-message" class="form-message" role="alert" hidden></p>
+    <form id="author-form" method="post" action="{{ url_for(form_endpoint, author_id=author.id) if is_edit else url_for(form_endpoint) }}" data-success-url="{{ url_for('home') }}">
       <div class="field">
         <label for="iname">Name</label>
-        <input id="iname" name="iname" type="text" required>
+        <input id="iname" name="iname" type="text" value="{{ author.name if is_edit else '' }}" required>
       </div>
 
       <div class="field">
         <label for="birth_date">Birth date</label>
-        <input id="birth_date" name="birth_date" type="date" required>
+        <input id="birth_date" name="birth_date" type="date" value="{{ author.birth_date if is_edit and author.birth_date else '' }}" required>
       </div>
 
       <div class="field">
         <label for="date_of_death">Date of death</label>
-        <input id="date_of_death" name="date_of_death" type="date">
+        <input id="date_of_death" name="date_of_death" type="date" value="{{ author.date_of_death if is_edit and author.date_of_death else '' }}">
       </div>
 
-      <button type="submit">Add Author</button>
+      <button type="submit">{{ 'Save Changes' if is_edit else 'Add Author' }}</button>
     </form>
   </main>
+  <script>
+    const authorForm = document.getElementById("author-form");
+    const formMessage = document.getElementById("form-message");
+
+    authorForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      formMessage.hidden = true;
+
+      const submitButton = authorForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+
+      try {
+        const response = await fetch(authorForm.action, {
+          method: "POST",
+          body: new FormData(authorForm),
+          redirect: "manual",
+        });
+
+        if (response.type === "opaqueredirect") {
+          window.location.assign(authorForm.dataset.successUrl);
+          return;
+        }
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          formMessage.textContent = typeof payload === "string"
+            ? payload
+            : payload?.error || "Unable to save the author. Please review the information and try again.";
+          formMessage.hidden = false;
+          return;
+        }
+
+        window.location.assign(authorForm.dataset.successUrl);
+      } catch {
+        formMessage.textContent = "Unable to connect to the server. Please try again.";
+        formMessage.hidden = false;
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+  </script>
 </body>
 </html>

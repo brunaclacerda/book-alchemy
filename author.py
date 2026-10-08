@@ -1,8 +1,10 @@
 import logging
 from datetime import date
 
-from data_models import Author
+from sqlalchemy.exc import OperationalError
+
 import data_models as models
+from data_models import Author
 from setup import db
 
 logger = logging.getLogger(__name__)
@@ -56,6 +58,9 @@ def delete_author(author_id: int) -> dict | None:
 
         author.delete()
 
+    except OperationalError as e:
+        logger.error(e)
+        return {"error": "DB communication error.", "code": 500}
     except Exception as e:
         logger.error(e)
         return {"error": "Unexpected error.", "code": 500}

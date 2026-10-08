@@ -2,7 +2,7 @@ import logging
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import ForeignKey, desc, func, or_, select
+from sqlalchemy import ForeignKey, delete, desc, func, or_, select
 from sqlalchemy.orm import Mapped, joinedload, mapped_column, relationship
 
 from setup import db
@@ -43,6 +43,28 @@ class Author(db.Model):
         logger.debug("Author has %s books", nr_books)
         return nr_books
 
+    def delete(self, commit=True):
+
+        logger.debug("Deleting books from author %s", self.name)
+        db.session.execute(delete(Book).where(Book.author_id == self.id))
+
+        logger.debug("Deleting record in the session.")
+        db.session.delete(self)
+
+        if commit:
+            error = None
+            try:
+                logger.debug("Commiting transaction.")
+                db.session.commit()
+            except Exception as e:
+                logger.error("Unexpected error on commiting: %s", e)
+                error = e
+            finally:
+                if error:
+                    logger.error("Rollbacking.")
+                    db.session.rollback()
+                    raise (error)
+
 
 class Book(db.Model):
     """
@@ -58,11 +80,11 @@ class Book(db.Model):
     """
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    isbn: Mapped[str] = mapped_column()
+    isbn: Mapped[Optional[str]] = mapped_column()
     title: Mapped[str] = mapped_column()
-    publication_year: Mapped[int] = mapped_column()
+    publication_year: Mapped[Optional[int]] = mapped_column()
     author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
-    rating: Mapped[int] = mapped_column()
+    rating: Mapped[Optional[int]] = mapped_column()
 
     author: Mapped["Author"] = relationship()
 

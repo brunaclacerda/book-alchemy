@@ -63,10 +63,8 @@ def validate_book(book: dict, new=False) -> str | None:
         logger.debug("Rating: %s", book["rating"])
         if isinstance(book["rating"], str) and not book["rating"].isnumeric():
             return {"error": "Rating must be a number."}
-        elif type(book["rating"]) is int and (
-            int(book["rating"]) < 1 or int(book["rating"]) > 10
-        ):
-            return {"error": "Rating value must between 0 and 10."}
+        elif int(book["rating"]) < 1 or int(book["rating"]) > 10:
+            return {"error": "Rating value must be between 1 and 10."}
 
     return None
 
