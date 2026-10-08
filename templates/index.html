@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Library</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+</head>
+<body>
+  {% with notifications = get_flashed_messages(with_categories=true) %}
+  {% if notifications %}
+  <div class="toast-region" aria-label="Notifications">
+    {% for category, message in notifications %}
+    {% set toast_type = 'error' if category in ['error', 'danger'] else 'success' %}
+    <div class="toast toast-{{ toast_type }}" role="{{ 'alert' if toast_type == 'error' else 'status' }}" aria-live="polite">
+      <span>{{ message }}</span>
+      <button class="toast-close" type="button" aria-label="Close notification">×</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <main class="library-page">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">My collection</p>
+        <h1>Personal Library</h1>
+        <p class="subtitle">Keep track of the books and authors in your library.</p>
+      </div>
+
+      <nav class="page-actions" aria-label="Library actions">
+        <button id="authors-toggle" class="button button-secondary" type="button" aria-expanded="false" aria-controls="authors-section">
+          See Author
+        </button>
+        <a class="button button-secondary" href="{{ url_for('add_author') }}">New Author</a>
+        <a class="button button-primary" href="{{ url_for('add_book') }}">New Book</a>
+      </nav>
+    </header>
+
+    <section class="table-section" aria-labelledby="books-heading">
+      <div class="section-heading">
+        <div>
+          <h2 id="books-heading">Books</h2>
+          <span id="books-count" class="record-count">{{ books|length if books else 0 }} total</span>
+        </div>
+        {% set active_criteria = criteria|default(request.args.get('criteria', ''), true) %}
+        <form class="book-search" method="get" action="/search">
+          <label class="sr-only" for="book-search-input">Search books</label>
+          <input id="book-search-input" name="criteria" type="search" placeholder="Title or author name" value="{{ active_criteria }}" autocomplete="off" required>
+          <button class="button button-primary" type="submit">Search</button>
+          {% if active_criteria %}
+          <a class="button button-secondary" href="{{ url_for('home') }}">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+
+      <div class="table-wrap">
+        <table id="books-table">
+          <thead>
+            <tr>
+              <th scope="col">Cover</th>
+              <th scope="col">
+                <button class="sort-button" type="button" data-order="title" aria-label="Sort books by title" aria-pressed="false">
+                  Title <span class="sort-icon" aria-hidden="true">↕</span>
+                </button>
+              </th>
+              <th scope="col">
+                <button class="sort-button" type="button" data-order="isbn" aria-label="Sort books by ISBN" aria-pressed="false">
+                  ISBN <span class="sort-icon" aria-hidden="true">↕</span>
+                </button>
+              </th>
+              <th scope="col">
+                <button class="sort-button" type="button" data-order="publication_year" aria-label="Sort books by publication year" aria-pressed="false">
+                  Publication Year <span class="sort-icon" aria-hidden="true">↕</span>
+                </button>
+              </th>
+              <th scope="col">
+                <button class="sort-button" type="button" data-order="author" aria-label="Sort books by author name" aria-pressed="false">
+                  Author Name <span class="sort-icon" aria-hidden="true">↕</span>
+                </button>
+              </th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for book in books|default([]) %}
+            <tr data-book-row>
+              <td data-label="Cover" class="cover-cell">
+                {% if book.isbn %}
+                <img
+                  class="book-cover"
+                  src="https://covers.openlibrary.org/b/isbn/{{ book.isbn|replace('-', '') }}-M.jpg?default=false"
+                  alt="Cover of {{ book.title }}"
+                  loading="lazy"
+                  onerror="this.hidden = true; this.nextElementSibling.hidden = false;"
+                >
+                <span class="cover-unavailable" hidden>No cover</span>
+                {% else %}
+                <span class="cover-unavailable">No ISBN</span>
+                {% endif %}
+              </td>
+              <td data-label="Title" class="book-title">{{ book.title }}</td>
+              <td data-label="ISBN">{{ book.isbn or '—' }}</td>
+              <td data-label="Publication Year">{{ book.publication_year or '—' }}</td>
+              <td data-label="Author Name">{{ book.author.name if book.author else '—' }}</td>
+              <td class="actions" data-label="Actions">
+                <a class="text-action" href="{{ url_for('edit_book', book_id=book.id) }}">Edit</a>
+                <form method="post" action="/book/{{ book.id }}/delete">
+                  <button class="text-action danger" type="submit">Remove</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td class="empty-state" colspan="6">No books found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="authors-section" class="table-section authors-section" aria-labelledby="authors-heading" hidden>
+      <div class="section-heading">
+        <h2 id="authors-heading">Authors</h2>
+        <span class="record-count">{{ authors|length if authors else 0 }} total</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Author Name</th>
+              <th scope="col">Birth Date</th>
+              <th scope="col">Date of Death</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for author in authors|default([]) %}
+            <tr>
+              <td data-label="Author Name" class="book-title">{{ author.name }}</td>
+              <td data-label="Birth Date" class="book-title">{{ author.birth_date if author.birth_date else '—' }}</td>
+              <td data-label="Date of Death" class="book-title">{{ author.date_of_death if author.date_of_death else '—'  }}</td>
+              <td class="actions" data-label="Actions">
+                <form method="post" action="/author/{{ author.id }}/delete">
+                  <button class="text-action danger" type="submit">Remove</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td class="empty-state" colspan="2">No authors yet. Create an author before adding a book.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const authorsToggle = document.getElementById('authors-toggle');
+    const authorsSection = document.getElementById('authors-section');
+    const booksTable = document.getElementById('books-table');
+    const sortButtons = booksTable.querySelectorAll('.sort-button');
+    document.querySelectorAll('.toast').forEach((toast) => {
+      const dismissToast = () => toast.remove();
+      toast.querySelector('.toast-close').addEventListener('click', dismissToast);
+      window.setTimeout(dismissToast, 5000);
+    });
+
+    authorsToggle.addEventListener('click', () => {
+      const willShow = authorsSection.hidden;
+      authorsSection.hidden = !willShow;
+      authorsToggle.textContent = willShow ? 'Close Authors' : 'See Author';
+      authorsToggle.setAttribute('aria-expanded', String(willShow));
+    });
+
+    const pageParams = new URLSearchParams(window.location.search);
+    const activeOrder = pageParams.get('order');
+    const activeDirection = pageParams.get('direction');
+
+    sortButtons.forEach((button) => {
+      const isActive = button.dataset.order === activeOrder;
+      if (isActive) {
+        button.setAttribute('aria-pressed', 'true');
+        button.querySelector('.sort-icon').textContent = activeDirection === 'desc' ? '↓' : '↑';
+      }
+
+      button.addEventListener('click', () => {
+        const nextDirection = button.dataset.order === activeOrder && activeDirection === 'asc'
+          ? 'desc'
+          : 'asc';
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set('order', button.dataset.order);
+        nextUrl.searchParams.set('direction', nextDirection);
+        window.location.assign(nextUrl);
+      });
+    });
+
+  </script>
+</body>
+</html>
