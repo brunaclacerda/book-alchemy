@@ -46,10 +46,10 @@ def home():
             "direction": request.args.get("direction", "asc"),
         }
     logger.debug(sort)
-    books = book.get_all(user_sort=sort)
-    authors = author.get_all()
+    books = book.get_all(user_sort=sort).get("data", [])
+    authors = author.get_all().get("data", [])
 
-    return render_template("index.html", books=books["data"], authors=authors["data"])
+    return render_template("index.html", books=books, authors=authors)
 
 
 @app.route("/add_book", methods=["GET", "POST"])
