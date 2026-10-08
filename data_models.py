@@ -34,6 +34,9 @@ class Author(db.Model):
         )
 
     def count_books(self) -> int:
+        """
+        Count how many books the author has in the library
+        """
         stmt = select(func.count(Book.id)).where(Book.author_id == self.id)
 
         nr_books = db.session.scalar(stmt)
@@ -55,17 +58,18 @@ class Book(db.Model):
     """
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    isbn: Mapped[Optional[str]] = mapped_column()
+    isbn: Mapped[str] = mapped_column()
     title: Mapped[str] = mapped_column()
     publication_year: Mapped[int] = mapped_column()
     author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
+    rating: Mapped[int] = mapped_column()
 
     author: Mapped["Author"] = relationship()
 
     def __str__(self):
         return (
             f"Book ID: {self.id}, title: {self.title}, ISBN: {self.isbn}, "
-            f"Publication Year: {self.publication_year}, Author ID: {self.author_id}"
+            f"Publication Year: {self.publication_year}, Author ID: {self.author_id}, Rating: {self.rating}"
         )
 
 

@@ -69,9 +69,9 @@ def add_book():
     if request.form:
         result = book.create(request.form)
         if result.get("error", None):
-            flash(result["error"], "error")
-        else:
-            flash("Book created successfully.", "success")
+            return jsonify({"error": result["error"]}), 400
+
+        flash("Book created successfully.")
         return redirect("/")
 
     return jsonify({"error": "Invalid request."}), 400
@@ -103,7 +103,7 @@ def edit_book(book_id):
         if result and result.get("error", None):
             flash(result["error"], "error")
         else:
-            flash("Book deleted successfully.", "success")
+            flash("Book updated successfully.", "success")
         return redirect("/")
 
     return jsonify({"error": "Invalid request."}), 400
@@ -138,9 +138,9 @@ def add_author():
     if request.form:
         result = author.create(request.form)
         if result.get("error", None):
-            flash(result["error"], "error")
-        else:
-            flash("New author saved.", "success")
+            return jsonify({"error": result["error"]}), 400
+
+        flash("New author saved.")
         return redirect("/")
 
     return jsonify({"error": "Invalid request."}), 400
@@ -185,6 +185,17 @@ def search():
     authors = author.get_all().get("data", [])
 
     return render_template("index.html", books=books, authors=authors)
+
+
+@app.post("/rate/<int:book_id>")
+def rate_book(book_id):
+    if request.form and request.form.get("rating", None):
+        result = book.edit(book_id, {"rating": request.form.get("rating", None)})
+        if result and result.get("error", None):
+            flash(result["error"], "error")
+    else:
+        flash("No valid rating value provided.", "error")
+    return redirect("/")
 
 
 if __name__ == "__main__":

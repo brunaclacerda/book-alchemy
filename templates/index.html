@@ -66,6 +66,11 @@
                 </button>
               </th>
               <th scope="col">
+                <button class="sort-button" type="button" data-order="rating" aria-label="Sort books by rating" aria-pressed="false">
+                  Rating <span class="sort-icon" aria-hidden="true">↕</span>
+                </button>
+              </th>
+              <th scope="col">
                 <button class="sort-button" type="button" data-order="isbn" aria-label="Sort books by ISBN" aria-pressed="false">
                   ISBN <span class="sort-icon" aria-hidden="true">↕</span>
                 </button>
@@ -95,25 +100,57 @@
                   loading="lazy"
                   onerror="this.hidden = true; this.nextElementSibling.hidden = false;"
                 >
-                <span class="cover-unavailable" hidden>No cover</span>
+                <span class="cover-unavailable" hidden aria-label="Cover unavailable"></span>
                 {% else %}
-                <span class="cover-unavailable">No ISBN</span>
+                <span class="cover-unavailable" aria-label="No ISBN available"></span>
                 {% endif %}
               </td>
               <td data-label="Title" class="book-title">{{ book.title }}</td>
-              <td data-label="ISBN">{{ book.isbn or '—' }}</td>
+              <td data-label="Rating">
+                <form class="rating-form" method="post" action="/rate/{{ book.id }}">
+                  <label class="sr-only" for="rating-{{ book.id }}">Rating for {{ book.title }}</label>
+                  <select id="rating-{{ book.id }}" name="rating" onchange="this.form.requestSubmit()">
+                    <option value="">Not rated</option>
+                    {% for rating_value in range(1, 11) %}
+                    <option value="{{ rating_value }}" {% if book.rating == rating_value %}selected{% endif %}>{{ rating_value }}/10</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
+              <td data-label="ISBN">
+                {% if book.isbn %}
+                {% set isbn = book.isbn|replace('-', '')|replace(' ', '') %}
+                <span class="isbn-value">
+                  {% if isbn|length == 13 %}
+                  {{ isbn[0:3] }}-{{ isbn[3:4] }}-{{ isbn[4:7] }}-{{ isbn[7:12] }}-{{ isbn[12:13] }}
+                  {% elif isbn|length == 10 %}
+                  {{ isbn[0:1] }}-{{ isbn[1:4] }}-{{ isbn[4:9] }}-{{ isbn[9:10] }}
+                  {% else %}
+                  {{ book.isbn }}
+                  {% endif %}
+                </span>
+                {% else %}
+                —
+                {% endif %}
+              </td>
               <td data-label="Publication Year">{{ book.publication_year or '—' }}</td>
               <td data-label="Author Name">{{ book.author.name if book.author else '—' }}</td>
               <td class="actions" data-label="Actions">
-                <a class="text-action" href="{{ url_for('edit_book', book_id=book.id) }}">Edit</a>
-                <form method="post" action="/book/{{ book.id }}/delete">
-                  <button class="text-action danger" type="submit">Remove</button>
-                </form>
+                <div class="row-actions">
+                  <a class="text-action icon-action" href="{{ url_for('edit_book', book_id=book.id) }}" aria-label="Edit {{ book.title }}" title="Edit">
+                    <span aria-hidden="true">✎</span>
+                  </a>
+                  <form method="post" action="/book/{{ book.id }}/delete">
+                    <button class="text-action icon-action danger" type="submit" aria-label="Remove {{ book.title }}" title="Remove">
+                      <span aria-hidden="true">🗑</span>
+                    </button>
+                  </form>
+                </div>
               </td>
             </tr>
             {% else %}
             <tr>
-              <td class="empty-state" colspan="6">No books found.</td>
+              <td class="empty-state" colspan="7">No books found.</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -144,9 +181,13 @@
               <td data-label="Birth Date" class="book-title">{{ author.birth_date if author.birth_date else '—' }}</td>
               <td data-label="Date of Death" class="book-title">{{ author.date_of_death if author.date_of_death else '—'  }}</td>
               <td class="actions" data-label="Actions">
-                <form method="post" action="/author/{{ author.id }}/delete">
-                  <button class="text-action danger" type="submit">Remove</button>
-                </form>
+                <div class="row-actions">
+                  <form method="post" action="/author/{{ author.id }}/delete">
+                    <button class="text-action icon-action danger" type="submit" aria-label="Remove {{ author.name }}" title="Remove">
+                      <span aria-hidden="true">🗑</span>
+                    </button>
+                  </form>
+                </div>
               </td>
             </tr>
             {% else %}

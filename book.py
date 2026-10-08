@@ -53,10 +53,20 @@ def validate_book(book: dict, new=False) -> str | None:
     if "title" not in book and new:
         return {"error": "Title of book must be provided."}
 
-    publication_year = book.get("publication_year", None)
-    curr_year = date.today().year
-    if publication_year and int(publication_year) > curr_year:
-        return {"error": f"Publication year should not be superior to: {curr_year}"}
+    if "publication_year" in book and book.get("publication_year", None):
+        publication_year = book["publication_year"]
+        curr_year = date.today().year
+        if publication_year and int(publication_year) > curr_year:
+            return {"error": f"Publication year should not be superior to: {curr_year}"}
+
+    if "rating" in book and book.get("rating", None):
+        logger.debug("Rating: %s", book["rating"])
+        if isinstance(book["rating"], str) and not book["rating"].isnumeric():
+            return {"error": "Rating must be a number."}
+        elif type(book["rating"]) is int and (
+            int(book["rating"]) < 1 or int(book["rating"]) > 10
+        ):
+            return {"error": "Rating value must between 0 and 10."}
 
     return None
 
@@ -81,6 +91,7 @@ def create(new_book: dict) -> Book | dict:
             isbn=new_book.get("isbn", None),
             publication_year=new_book.get("publication_year", None),
             author_id=new_book.get("author_id", None),
+            rating=new_book.get("rating", None),
         )
         logger.debug(book)
         logger.debug("Saving book.")
@@ -149,6 +160,8 @@ def edit(book_id: int, updates: dict) -> dict:
             book.publication_year = updates["publication_year"]
         if "author_id" in updates:
             book.author_id = updates["author_id"]
+        if "rating" in updates:
+            book.rating = updates["rating"]
 
         book.save()
         return {"data": book}

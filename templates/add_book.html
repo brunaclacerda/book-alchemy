@@ -4,14 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Add Book</title>
-  <link rel="stylesheet" href="../static/css/add_author.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
 </head>
 <body>
   {% set form_endpoint = form_action|default(route_name|default(request.endpoint, true), true) %}
   {% set is_edit = book is defined and book %}
   <main class="card">
     <h1>{{ 'Edit Book' if is_edit else 'Add a New Book' }}</h1>
-    <form method="post" action="{{ url_for(form_endpoint, book_id=book.id) if is_edit else url_for(form_endpoint) }}">
+    <p id="form-message" class="form-message" role="alert" hidden></p>
+    <form id="book-form" method="post" action="{{ url_for(form_endpoint, book_id=book.id) if is_edit else url_for(form_endpoint) }}" data-success-url="{{ url_for('home') }}" data-mode="{{ 'edit' if is_edit else 'create' }}">
       <div class="field">
         <label for="title">Title</label>
         <input id="title" name="title" type="text" value="{{ book.title if is_edit else '' }}" required>
@@ -28,6 +29,16 @@
       </div>
 
       <div class="field">
+        <label for="rating">Rating</label>
+        <select id="rating" name="rating">
+          <option value="">Not rated</option>
+          {% for rating_value in range(1, 11) %}
+          <option value="{{ rating_value }}" {% if is_edit and book.rating == rating_value %}selected{% endif %}>{{ rating_value }}/10</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
         <label for="author">Author</label>
         <select id="author" name="author_id" required>
           <option value="" selected disabled>Loading authors…</option>
@@ -39,6 +50,8 @@
   </main>
   <script>
     const authorSelect = document.getElementById("author");
+    const bookForm = document.getElementById("book-form");
+    const formMessage = document.getElementById("form-message");
     const selectedAuthorId = "{{ book.author_id if is_edit else '' }}";
 
     fetch("/author")
@@ -60,6 +73,44 @@
       .catch(() => {
         authorSelect.innerHTML = '<option value="" selected disabled>Authors could not be loaded</option>';
       });
+
+    bookForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        formMessage.hidden = true;
+
+        const submitButton = bookForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+
+        try {
+          const response = await fetch(bookForm.action, {
+            method: "POST",
+            body: new FormData(bookForm),
+            redirect: "manual",
+          });
+
+          if (response.type === "opaqueredirect") {
+            window.location.assign(bookForm.dataset.successUrl);
+            return;
+          }
+
+          if (!response.ok) {
+            const payload = await response.json().catch(() => null);
+            const message = typeof payload === "string"
+              ? payload
+              : payload?.error || "Unable to add the book. Please review the information and try again.";
+            formMessage.textContent = message;
+            formMessage.hidden = false;
+            return;
+          }
+
+          window.location.assign(bookForm.dataset.successUrl);
+        } catch {
+          formMessage.textContent = "Unable to connect to the server. Please try again.";
+          formMessage.hidden = false;
+        } finally {
+          submitButton.disabled = false;
+        }
+    });
   </script>
 </body>
 </html>
